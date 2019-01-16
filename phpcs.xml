@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="PHP Standards">
+    <description>PHP team Coding Standards</description>
+
+    <file>app</file>
+    <file>config</file>
+    <file>routes</file>
+    <file>tests</file>
+
+    <exclude-patterns>*/migrations/*</exclude-patterns>
+
+    <rule ref="PSR2"/>
+
+    <arg name="colors"/>
+    <arg value="p"/>
+</ruleset>

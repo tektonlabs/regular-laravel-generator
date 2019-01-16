@@ -1,0 +1,72 @@
+image: registry.gitlab.com/tektonlabs/teams/web/demos/laravel
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+  - vendor/
+
+stages:
+  - preparation
+  - test
+  - deploy
+
+composer:
+  stage: preparation
+  script:
+    - composer install --prefer-dist --no-ansi --no-interaction --no-progress --no-scripts
+    - cp .env.example .env
+    - php artisan key:generate
+  artifacts:
+    paths:
+      - vendor/
+      - .env
+    expire_in: 1 days
+    when: always
+  cache:
+    paths:
+      - vendor/
+
+codequality:
+  stage: test
+  dependencies:
+    - composer
+  script:
+    - vendor/bin/phpcs
+    - vendor/bin/phpmd app text phpmd.xml
+    - php artisan code:analyse
+
+phpunit:
+  stage: test
+  script:
+    - vendor/bin/phpunit
+
+deploy:
+  stage: deploy
+  dependencies:
+    - composer
+  script:
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | ssh-add -
+    - mkdir -p ~/.ssh
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+    - ~/.composer/vendor/bin/envoy run deploy-code
+  environment:
+    name: production
+    url: http://laravel.demos.tektonlabs.com
+  only:
+    - master
+
+deploy_fresh:
+  stage: deploy
+  script:
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | ssh-add -
+    - mkdir -p ~/.ssh
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+    - ~/.composer/vendor/bin/envoy run deploy-fresh
+  environment:
+    name: production
+    url: http://laravel.demos.tektonlabs.com
+  when: manual
+  only:
+    - master
